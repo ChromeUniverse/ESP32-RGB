@@ -8,6 +8,7 @@ Check out my videos on YouTube over at [Lucca's Lab](https://www.youtube.com/cha
 
 __May 22nd__ 
 
-* Repo created
+* Repo created.
+* ESP web server code version 1.0 uploaded.
 
 
