@@ -10,5 +10,4 @@ __May 22nd__
 
 * Repo created.
 * ESP web server code version 1.0 uploaded.
-
-
+* MIT AI2 App project file version 1.0 uploaded.
