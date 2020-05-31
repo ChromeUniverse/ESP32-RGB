@@ -12,14 +12,13 @@
 //  https://github.com/qrno
 //
 
-// Load Wi-Fi library
 #include <WiFi.h>
 
 // Enter your network credentials here
 const char* ssid     = "MyNetwork";
 const char* password = "password";
 
-// Set web server port number to 80
+// Set web server at port 80
 WiFiServer server(80);
 
 // Storing the HTTP request
@@ -36,18 +35,16 @@ int freq = 5000;        // PWM frequency (hertz)
 int rChannel = 0;       // PWM channel (0 to 15)
 int gChannel = 1;
 int bChannel = 2;
-int resolution = 8;     // PWM duty cycle resolution (1 to 16 bits
+int resolution = 8;     // PWM duty cycle resolution (1 to 16 bits)
 
-// R, G and B Strings and Values 
-String rString = "";   
-String gString = "";
-String bString = "";
+// R, G and B Values 
 int rValue = 0;
 int gValue = 0;
 int bValue = 0;
 
 void setup() {
   Serial.begin(115200);
+
   // Setting GPIOs as outputs
   pinMode(rLed, OUTPUT);
   pinMode(gLed, OUTPUT);
@@ -61,6 +58,7 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
+
   // Print ESP32 IP address and start web server
   Serial.println("");
   Serial.println("WiFi connected.");
@@ -78,52 +76,40 @@ void setup() {
 }
 
 void loop(){
-  WiFiClient client = server.available();   // Listen for incoming clients
+  WiFiClient client = server.available();   // listen for incoming clients
 
-  if (client) {                             // If a new client connects,
-    Serial.println("New Client.");          // print a message out in the serial port
-    String currentLine = "";                // make a String to hold incoming data from the client
-    while (client.connected()) {            // loop while the client's connected
-      if (client.available()) {             // if there's bytes to read from the client,
-        char c = client.read();             // read a byte, then
-        Serial.write(c);                    // print it out the serial monitor
-        header += c;
-        if (c == '\n') {                    // if the byte is a newline character
-          // if the current line is blank, you got two newline characters in a row.
-          // that's the end of the client HTTP request, so send a response:
-          if (currentLine.length() == 0) {
-            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-            // and a content-type so the client knows what's coming, then a blank line:
+  if (client) {                             // if a new client connects,
+    Serial.println("New Client.");
+    String currentLine = "";                // 'currentLine' stores the current line of the request
+
+    while (client.connected()) {
+      if (client.available()) {             // checks if there are unread characters from the request
+
+        char c = client.read();             // c stores the current character we are reading
+        Serial.write(c);
+        header += c;                        // we'll store the entire request in 'header'
+
+        if (c == '\n') {
+          if (currentLine.length() == 0) { 
+            /* Note that we'll only enter this conditional with a double line break
+            ('\n' on empty line) which signifies the end of an http request */
+
+            /* HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
+            and a content-type, followed by a blank line */
             client.println("HTTP/1.1 200 OK");
             client.println("Content-type:text/html");
             client.println("Connection: close");
             client.println();
             
-            // set RGB colors
-            String RGB = "";           
+            // if the request does not contain 'GET /led/' req will be set to -1
             int req = header.indexOf("GET /led/");
             if (req >= 0) {
                                           
-              rString = "";
-              rString += header[9];
-              rString += header[10];
-              rString += header[11];
-                            
-              gString = "";
-              gString += header[12];
-              gString += header[13];
-              gString += header[14];
-                            
-              bString = "";
-              bString += header[15];
-              bString += header[16];
-              bString += header[17];
+              rValue = header.substring(9, 12).toInt();     // chars 9-11
+              gValue = header.substring(12, 15).toInt();    // chars 12-14
+              bValue = header.substring(15, 18).toInt();    // chars 15-18
               
-              rValue = rString.toInt();
-              gValue = gString.toInt();
-              bValue = bString.toInt(); `           
-
-              // printing out the final RGB values                     
+              // parsed Values
               Serial.print("RGB: ");
               Serial.print(rValue);
               Serial.print(" ");
@@ -137,29 +123,32 @@ void loop(){
               ledcWrite(bChannel, bValue);
             }         
           
-
-            // Displaying HTML webpage
+            // displaying HTML webpage
             client.println("<!DOCTYPE html><html>");
-            client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-            client.println("<link rel=\"icon\" href=\"data:,\">");
-            client.println("<p>" + rString + " " +  gString + " " +  bString + "</p>");         
-            client.println("</body></html>");
-            
-            // The HTTP response ends with another blank line
-            client.println();
-            // Break out of the while loop
+            client.println("<head><title>ESP 32</title></head>");
+            client.println("<body>");
+              client.print("<p>RGB: ");
+              client.print(rValue);
+              client.print(" ");
+              client.print(gValue);
+              client.print(" ");
+              client.print(bValue);
+              client.println("</p>");
+            client.println("</body>");
+            client.println("</html>");
+            client.println();           // http response ends with blank line
+
             break;
-          } else { // if you got a newline, then clear currentLine
-            currentLine = "";
-          }
+          } else currentLine == "";
+
         } else if (c != '\r') {  // if you got anything else but a carriage return character,
           currentLine += c;      // add it to the end of the currentLine
         }
       }
     }
-    // Clear the header variable
+
+    // Ends connection and clears the header
     header = "";
-    // Close the connection
     client.stop();
     Serial.println("Client disconnected.");
     Serial.println("");
